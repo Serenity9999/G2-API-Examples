@@ -1,7 +1,7 @@
 # 多人通话
 
 ## 1.项目简介
-这个开源示例项目演示了如何快速集成 网易云信 新一代（G2）音视频 SDK，实现多人的音频通话。
+这个开源示例项目演示了如何快速集成 网易云信 新一代（G2）音视频 SDK，实现多实例功能。
 
 ## 2.功能包含
 
@@ -10,7 +10,7 @@
 - 离开房间
 - 多人通话
 
-[在线体验](https://app.yunxin.163.com/webdemo/g2web/index.html#/?path=audio)
+[在线体验](https://app.yunxin.163.com/webdemo/g2web/index.html#/?path=multipleInstances)
 
 ## 3.技术栈
 vue （vue-cli 4.x）
