@@ -1,4 +1,4 @@
-# 多人通话
+# 客户端录制
 
 ## 1.项目简介
 这个开源示例项目演示了如何快速集成 网易云信 新一代（G2）音视频 SDK，实现客户端录制功能。
@@ -42,7 +42,7 @@ npm install
 npm run dev
 ```
 
-运行后通过 https://localhost:8020/index.html#/?path=audio 进行访问
+运行后通过 https://localhost:8020/index.html#/?path=record 进行访问
 
 ### 正式环境打包
 

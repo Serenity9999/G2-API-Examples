@@ -58,6 +58,8 @@
                 localStream: null,
                 remoteStreams: [],
                 max: 20,
+                remoteMuteAudio: false,
+                remoteMuteVideo: false,
             };
         },
         mounted() {
@@ -80,21 +82,70 @@
                 );
             });
 
+            // mute-video 事件表示远端用户在视频通话中关掉自己的视频。
+            this.client.on('mute-video', (evt) => {
+                console.warn(`${evt.uid} mute video`)
+                this.remoteStreams.forEach((item) => {
+                    if (item.stream.getId() === evt.uid){
+                        item.muteVideo = true
+                        this.remoteMuteVideo = true
+                    }
+                }
+                );
+            })
+
+            // unmute-video 事件表示远端用户在视频通话中打开自己的视频。
+            this.client.on('unmute-video', (evt) => {
+                console.warn(`${evt.uid} unmute video`)
+                this.remoteStreams.forEach((item) => {
+                    if (item.stream.getId() === evt.uid){
+                        item.muteVideo = false
+                        this.remoteMuteVideo = false
+                    }
+                }
+                );
+            })
+
+            // mute-audio 事件表示远端用户静音其音频，即关掉自己的声音。
+            this.client.on('mute-audio', (evt) => {
+                console.warn(`${evt.uid} mute audio`)
+                this.remoteStreams.forEach((item) => {
+                    if (item.stream.getId() === evt.uid){
+                        item.muteAudio = true
+                        this.remoteMuteAudio = true
+                    }
+                }
+                );
+            })
+
+            // unmute-audio 事件表示远端用户取消静音，即打开自己的声音。
+            this.client.on('unmute-audio', (evt) => {
+                console.warn(`${evt.uid} unmute audio`)
+                this.remoteStreams.forEach((item) => {
+                    if (item.stream.getId() === evt.uid){
+                        item.muteAudio = false
+                        this.remoteMuteAudio = false
+                    }
+                }
+                );
+            })
+
+
             this.client.on('stream-added', async (evt) => {
                 //收到房间中其他成员发布自己的媒体的通知，对端同一个人同时开启了麦克风、摄像头、屏幕贡献，这里会通知多次
                 const stream = evt.stream;
                 const userId = stream.getId();
                 console.warn(`收到 ${userId} 的发布 ${evt.mediaType} 的通知`) // mediaType为：'audio' | 'video' | 'screen'
-                if (this.remoteStreams.some((item) => item.getId() === userId)) {
+                if (this.remoteStreams.some((item) => item.stream.getId() === userId)) {
                     console.warn('收到已订阅的远端发布，需要更新', stream);
                     this.remoteStreams = this.remoteStreams.map((item) =>
-                        item.getId() === userId ? stream : item
+                        item.stream.getId() === userId ? { stream, muteAudio: item.muteAudio, muteVideo: item.muteVideo } : item
                     );
                     //订阅其发布的媒体，可以渲染播放
                     await this.subscribe(stream);
                 } else if (this.remoteStreams.length < this.max - 1) {
                     console.warn('收到新的远端发布消息', stream);
-                    this.remoteStreams = this.remoteStreams.concat(stream);
+                    this.remoteStreams = this.remoteStreams.concat({ stream, muteAudio: false, muteVideo: false });
                     //订阅其发布的媒体，可以渲染播放
                     await this.subscribe(stream);
                 } else {
@@ -108,7 +159,7 @@
                 console.warn(`收到 ${userId} 的停止发布 ${evt.mediaType} 的通知`) // mediaType为：'audio' | 'video' | 'screen'
                 stream.stop(evt.mediaType);
                 this.remoteStreams = this.remoteStreams.map((item) =>
-                    item.getId() === userId ? stream : item
+                    item.stream.getId() === userId ? { stream, muteAudio: item.muteAudio, muteVideo: item.muteVideo } : item
                 );
                 console.warn('远端流停止订阅，需要更新', userId, stream);
             });
@@ -344,6 +395,7 @@
                     this.muteAudio = !this.muteAudio;
                     muteAudio = this.muteAudio;
                 } else {
+                    if (this.remoteMuteAudio) {return;}
                     const remoteMuteItem = this.remoteStreams.find((item) => item.stream.getId() === id);
                     stream = remoteMuteItem.stream;
                     remoteMuteItem.muteAudio = !remoteMuteItem.muteAudio;
@@ -386,6 +438,7 @@
                     this.muteVideo = !this.muteVideo;
                     muteVideo = this.muteVideo;
                 } else {
+                    if (this.remoteMuteVideo) {return;}
                     const remoteMuteItem = this.remoteStreams.find((item) => item.stream.getId() === id);
                     stream = remoteMuteItem.stream;
                     remoteMuteItem.muteVideo = !remoteMuteItem.muteVideo;

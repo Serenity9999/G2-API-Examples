@@ -1,4 +1,4 @@
-# 多人通话
+# h5
 
 ## 1.项目简介
 这个开源示例项目演示了如何快速集成 网易云信 新一代（G2）音视频 SDK，实现移动端浏览器的音视频通话。
@@ -41,7 +41,7 @@ npm install
 npm run dev
 ```
 
-运行后通过 https://localhost:8020/index.html#/?path=audio 进行访问
+运行后通过 https://localhost:8020/index.html#/?path=h5 进行访问
 
 ### 正式环境打包
 

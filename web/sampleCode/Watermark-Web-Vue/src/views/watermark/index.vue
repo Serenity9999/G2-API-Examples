@@ -132,15 +132,15 @@
                 isShowTimestampWatermarks: false,
                 imageUrls: [
                     {
-                        value: '/img/watermark/logo_yunxin.png',
+                        value: `${process.env.BASE_URL}img/watermark/logo_yunxin.png`,
                         label: '云信',
                     },
                     {
-                        value: '/img/watermark/logo_qiyu.jpg',
+                        value: `${process.env.BASE_URL}img/watermark/logo_qiyu.jpg`,
                         label: '七鱼',
                     },
                     {
-                        value: '/img/watermark/logo_yidun.jpg',
+                        value: `${process.env.BASE_URL}img/watermark/logo_yidun.jpg`,
                         label: '易盾',
                     },
                 ],
@@ -157,7 +157,7 @@
                 imageWatermarksParams: {
                     fps: 0,
                     loop: true,
-                    imageUrls: '',
+                    imageUrls: `${process.env.BASE_URL}img/watermark/logo_yunxin.png`,
                 },
                 textWatermarksParams: {
                     content: '',

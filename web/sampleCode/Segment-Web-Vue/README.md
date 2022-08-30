@@ -1,4 +1,4 @@
-# 多人通话
+# 虚拟背景
 
 ## 1.项目简介
 这个开源示例项目演示了如何快速集成 网易云信 新一代（G2）音视频 SDK，实现虚拟背景功能。
@@ -11,7 +11,7 @@
 - 多人通话
 - 背景分割
 
-[在线体验](https://app.yunxin.163.com/webdemo/g2web/index.html#/?path=screenShot)
+[在线体验](https://app.yunxin.163.com/webdemo/g2web/index.html#/?path=segment)
 
 ## 3.技术栈
 vue （vue-cli 4.x）
@@ -42,7 +42,7 @@ npm install
 npm run dev
 ```
 
-运行后通过 https://localhost:8020/index.html#/?path=audio 进行访问
+运行后通过 https://localhost:8020/index.html#/?path=segment 进行访问
 
 ### 正式环境打包
 
