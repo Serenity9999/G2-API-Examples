@@ -65,7 +65,6 @@
                 const stream = evt.stream;
                 const userId = stream.getId();
                 console.warn(`收到 ${userId} 的发布 ${evt.mediaType} 的通知`) // mediaType为：'audio' | 'video' | 'screen'
-                if (this.remoteStream) {return;}
                 const remoteStreamMap = this.client.adapterRef.remoteStreamMap
                 // 已经有两人在房间中，剔除（不能排除观众）
                 if (Object.keys(remoteStreamMap).length === 2) {return this.handleOver();}
@@ -92,10 +91,9 @@
                 console.warn(`收到订阅 ${userId} 的 ${evt.mediaType} 成功的通知`) // mediaType为：'audio' | 'video' | 'screen'
                 //这里可以根据mediaType的类型决定播放策略
                 const remoteStream = evt.stream;
+                this.isDesc = false
                 //用于播放对方视频画面的div节点
-                const div = [...this.$refs.small].find((item) => {
-                    return Number(item.dataset.uid) === Number(remoteStream.getId());
-                });
+                const div = this.$refs.small
                 //这里可以控制是否播放某一类媒体，这里设置的是用户主观意愿
                 //比如这里都是设置为true，本次通知的mediaType为audio，则本次调用的play会播放音频，如果video、screen内部已经订阅成功，则也会同时播放video、screen，反之不播放
                 const playOptions = {
@@ -196,9 +194,12 @@
             returnJoin(time = 2000) {
                 setTimeout(() => {
                     this.$router.push({
-                        path: '/'
-                    })
-                }, time)
+                        path: '/',
+                        query: {
+                            path: 'single',
+                        },
+                    });
+                }, time);
             },
             joinChannel (token) {
                 if (!this.client) {
