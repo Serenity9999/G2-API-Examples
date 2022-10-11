@@ -2,9 +2,10 @@
   <div class="wrapper">
     <div class="content">
       <!--画面div-->
-      <div class="main-window" ref="large"></div>
-
-      <div class="sub-window-wrapper">
+      <div :class="`main-window ${scale ? 'scale' : ''}`" ref="large"></div>
+      <!-- 远端屏幕共享 -->
+      <div class="main-window" v-show="scale" ref="largeScreen"></div>
+      <div :class="`sub-window-wrapper ${scale ? 'addTop' : ''}`">
         <!-- 本端屏幕共享画面 -->
         <div class="sub-window" v-show="isSharing" ref="localScreen"></div>
         <!--小画面视频流div-->
@@ -14,16 +15,6 @@
             :key="item.getId()"
             class="sub-window"
             ref="smallVideo"
-            :data-uid="item.getId()"
-          ></div>
-        </template>
-        <!--小画面屏幕贡献div-->
-        <template v-if="remoteScreens.length">
-          <div
-            v-for="item in remoteScreens"
-            :key="item.getId() + 'screen'"
-            class="sub-window"
-            ref="smallScreen"
             :data-uid="item.getId()"
           ></div>
         </template>
@@ -58,16 +49,17 @@
         name: 'screenShare',
         data() {
             return {
+                scale: false,
                 isSharing: false,
                 client: null,
                 localUid: Math.ceil(Math.random() * 1e5),
                 localStream: null,
                 remoteStreams: [],
-                remoteScreens: [],
                 max: 4,
                 isOpenVideo: false,
-                maxBitrate: null,
+                maxBitrate: 4000, // 设置最大码率为4M（单位：kbps）
                 contentHint: 'detail', //屏幕贡献的编码测试，detail表示清晰度优先、motion表示流畅度优先
+                screenId: null
             };
         },
         mounted() {
@@ -78,8 +70,6 @@
                 appkey: config.appkey,
                 debug: true,
             });
-            this.maxBitrate = this.$route.query.maxBitrate;
-            this.contentHint = this.$route.query.contentHint;
             //监听sdk抛出的事件
             this.client.on('peer-online', (evt) => {
                 console.warn(`${evt.uid} 加入房间`);
@@ -90,20 +80,18 @@
                 this.remoteStreams = this.remoteStreams.filter(
                     (item) => !!item.getId() && item.getId() !== evt.uid
                 );
-                this.remoteScreens = this.remoteScreens.filter(
-                    (item) => !!item.getId() && item.getId() !== evt.uid
-                );
             });
 
             this.client.on('stream-added', async (evt) => {
                 //收到房间中其他成员发布自己的媒体的通知，对端同一个人同时开启了麦克风、摄像头、屏幕贡献，这里会通知多次
                 const stream = evt.stream;
                 const userId = stream.getId();
-                console.warn(`收到 ${userId} 的发布 ${evt.mediaType} 的通知`) // mediaType为：'audio' | 'video' | 'screen'
-                if (evt.mediaType === 'screen') {
-                    this.remoteScreens.push(stream)
-                }
-                if (this.remoteStreams.some((item) => !!item.getId() && item.getId() === userId)) {
+                console.warn(`收到 ${userId} 的发布 ${evt.mediaType} 的通知`); // mediaType为：'audio' | 'video' | 'screen'
+                if (
+                    this.remoteStreams.some(
+                        (item) => !!item.getId() && item.getId() === userId
+                    )
+                ) {
                     console.warn('收到已订阅的远端发布，需要更新', stream);
                     this.remoteStreams = this.remoteStreams.map((item) =>
                         item.getId() === userId ? stream : item
@@ -124,49 +112,79 @@
             this.client.on('stream-removed', (evt) => {
                 const stream = evt.stream;
                 const userId = stream.getId();
-                console.warn(`收到 ${userId} 的停止发布 ${evt.mediaType} 的通知`) // mediaType为：'audio' | 'video' | 'screen'
+                console.warn(`收到 ${userId} 的停止发布 ${evt.mediaType} 的通知`); // mediaType为：'audio' | 'video' | 'screen'
                 stream.stop(evt.mediaType);
                 if (evt.mediaType === 'video' && this.remoteStreams.length) {
                     this.remoteStreams = this.remoteStreams.filter((item) => {
-                        return item && !!item.getId() && item.getId() !== userId
+                        return item && !!item.getId() && item.getId() !== userId;
                     });
                 }
-                if (evt.mediaType === 'screen' && this.remoteScreens.length) {
-                    this.remoteScreens = this.remoteScreens.filter((item) =>
-                        item && !!item.getId() && item.getId() !== userId
-                    );
+                if (evt.mediaType === 'screen' && stream.getId() === this.screenId) {
+                    this.scale = false;
+                    this.$nextTick(() => {
+                        const div = self.$refs.large;
+                        this.localStream.setLocalRenderMode(
+                            {
+                                // 设置视频窗口大小
+                                width: div.clientWidth,
+                                height: div.clientHeight,
+                                cut: false, // 是否裁剪
+                            },
+                            'video'
+                        );
+                    });
                 }
             });
             //执行完subscribe()方法后，如果订阅成功，这里会通知用户，此次订阅成功了
             this.client.on('stream-subscribed', (evt) => {
                 const userId = evt.stream.getId();
-                console.warn(`收到订阅 ${userId} 的 ${evt.mediaType} 成功的通知`) // mediaType为：'audio' | 'video' | 'screen'
+                console.warn(`收到订阅 ${userId} 的 ${evt.mediaType} 成功的通知`); // mediaType为：'audio' | 'video' | 'screen'
                 //这里可以根据mediaType的类型决定播放策略
                 const remoteStream = evt.stream;
                 //用于播放对方视频或者屏幕共享画面的div节点
-                const doms = evt.mediaType === 'screen' ? this.$refs.smallScreen : this.$refs.smallVideo; //音频播放不需要div节点，所以这里没有考虑音频的情况
-                const div = [...doms].find(
+                const doms = this.$refs.smallVideo; //音频播放不需要div节点，所以这里没有考虑音频的情况；共享屏幕单独处理
+                let div = [...doms].find(
                     (item) => Number(item.dataset.uid) === Number(remoteStream.getId())
                 );
-
+                // 这里只显示一个屏幕共享画面
+                if (evt.mediaType === 'screen' && !this.scale) {
+                    this.screenId = remoteStream.getId()
+                    this.scale = true;
+                    div = this.$refs.largeScreen;
+                    this.localStream.setLocalRenderMode(
+                        {
+                            // 设置视频窗口大小
+                            width: 160,
+                            height: 90,
+                            cut: false, // 是否裁剪
+                        },
+                        'video'
+                    );
+                }
                 //这里可以控制是否播放某一类媒体，这里设置的是用户主观意愿
                 //比如这里都是设置为true，本次通知的mediaType为audio，则本次调用的play会播放音频，如果video、screen内部已经订阅成功，则也会同时播放video、screen，反之不播放
                 const playOptions = {
                     audio: true,
                     video: true,
-                    screen: true
-                }
-                remoteStream.play(div, playOptions).then(() => {
-                    console.log('播放对端的流成功: ', playOptions);
-                    remoteStream.setRemoteRenderMode({
-                        // 设置视频窗口大小
-                        width: 160,
-                        height: 90,
-                        cut: false, // 是否裁剪
+                    screen: true,
+                };
+                remoteStream
+                    .play(div, playOptions)
+                    .then(() => {
+                        console.log('播放对端的流成功: ', playOptions);
+                        remoteStream.setRemoteRenderMode(
+                            {
+                                // 设置视频窗口大小
+                                width: evt.mediaType === 'screen' ? div.clientWidth : 160,
+                                height: evt.mediaType === 'screen' ? div.clientHeight : 90,
+                                cut: false, // 是否裁剪
+                            },
+                            `${evt.mediaType === 'screen' ? 'screen' : 'video'}`
+                        );
+                    })
+                    .catch((err) => {
+                        console.warn('播放对方视频失败了: ', err);
                     });
-                }).catch((err) => {
-                    console.warn('播放对方视频失败了: ', err);
-                });
                 //这里监听一下音频自动播放会被浏览器限制的问题（https://doc.yunxin.163.com/nertc/docs/jM3NDE0NTI?platform=web）
                 remoteStream.on('notAllowedError', (err) => {
                     const errorCode = err.getCode();
@@ -174,7 +192,7 @@
                     console.log('remoteStream notAllowedError: ', id);
                     if (errorCode === 41030) {
                         //页面弹筐加一个按钮，通过交互完成浏览器自动播放策略限制的接触
-                        const userGestureUI = document.createElement('div')
+                        const userGestureUI = document.createElement('div');
                         if (userGestureUI && userGestureUI.style) {
                             userGestureUI.style.fontSize = '20px';
                             userGestureUI.style.position = 'fixed';
@@ -188,10 +206,11 @@
                                     userGestureUI.parentNode.removeChild(userGestureUI);
                                 }
                                 remoteStream.resume();
-                            }
+                            };
                             userGestureUI.style.display = 'block';
-                            userGestureUI.innerHTML = '自动播放受到浏览器限制，需手势触发。<br/>点击此处手动播放'
-                            document.body.appendChild(userGestureUI)
+                            userGestureUI.innerHTML =
+                                '自动播放受到浏览器限制，需手势触发。<br/>点击此处手动播放';
+                            document.body.appendChild(userGestureUI);
                         }
                     }
                 });
@@ -200,15 +219,20 @@
             //里面有停止贡献的蓝色按钮，点击这个按钮，会触发这个事件，需要业务层主动处理
             //不处理的话，由于权限已经被收回了，测试屏幕贡献是采集不到数据的，会是黑屏
             this.client.on('stopScreenSharing', (evt) => {
-                console.warn('===== 检测到您手动停止屏幕贡献的权限, 这里业务层关闭屏幕共享');
-                this.localStream.close({
-                    type: 'screen',
-                }).then(() => {
-                    console.log('关闭屏幕共享 sucess');
-                    this.isSharing = false;
-                }).catch((err) => {
-                    console.log('关闭屏幕共享 失败: ', err);
-                });
+                console.warn(
+                    '===== 检测到您手动停止屏幕贡献的权限, 这里业务层关闭屏幕共享'
+                );
+                this.localStream
+                    .close({
+                        type: 'screen',
+                    })
+                    .then(() => {
+                        console.log('关闭屏幕共享 sucess');
+                        this.isSharing = false;
+                    })
+                    .catch((err) => {
+                        console.log('关闭屏幕共享 失败: ', err);
+                    });
             });
 
             this.client.on('uid-duplicate', () => {
@@ -256,8 +280,9 @@
                     console.warn('关闭视频');
                     this.localStream
                         .close({
-                            type: 'video'
-                        }).then(() => {
+                            type: 'video',
+                        })
+                        .then(() => {
                             console.warn('关闭视频');
                         })
                         .catch((err) => {
@@ -268,15 +293,16 @@
                     console.warn('打开视频');
                     this.localStream
                         .open({
-                            type: 'video'
-                        }).then(() => {
+                            type: 'video',
+                        })
+                        .then(() => {
                             console.warn('打开视频成功, 本地播放打开的视频');
                             const div = self.$refs.large;
                             this.localStream.play(div);
                             this.localStream.setLocalRenderMode({
                                 // 设置视频窗口大小
-                                width: div.clientWidth,
-                                height: div.clientHeight,
+                                width: this.scale ? 160 : div.clientWidth,
+                                height: this.scale ? 90 : div.clientHeight,
                                 cut: false, // 是否裁剪
                             });
                         })
@@ -355,6 +381,16 @@
                 });
                 //设置本地音频质量
                 this.localStream.setAudioProfile('speech_low_quality');
+                //前设置屏幕共享帧率为20帧
+                this.localStream.setScreenProfile({
+                    frameRate: NERTC.VIDEO_FRAME_RATE.CHAT_VIDEO_FRAME_RATE_20,
+                });
+                // 设置码率
+                this.localStream.setVideoEncoderConfiguration({
+                    mediaType: 'screen',
+                    maxBitrate: this.maxBitrate,
+                    contentHint: this.contentHint,
+                });
                 //启动媒体，打开实例对象中设置的媒体设备
                 this.localStream
                     .init()
@@ -396,7 +432,7 @@
                 remoteStream.setSubscribeConfig({
                     audio: true,
                     video: true,
-                    screen: true
+                    screen: true,
                 });
                 this.client
                     .subscribe(remoteStream)
@@ -420,28 +456,15 @@
                     })
                     .then(
                         () => {
+                            console.log('正在打开屏幕共享');
                             const div = this.$refs.localScreen;
-                            //设置屏幕贡献上行码率，以及编码策略
-                            if (this.maxBitrate) {
-                                this.localStream.setVideoEncoderConfiguration({
-                                    mediaType: 'screen',
-                                    maxBitrate: this.maxBitrate,
-                                    contentHint: this.contentHint,
-                                });
-                            } else {
-                                this.localStream.setVideoEncoderConfiguration({
-                                    mediaType: 'screen',
-                                    contentHint: this.contentHint,
-                                });
-                            }
-
                             this.localStream.play(div);
                             this.localStream.setLocalRenderMode(
                                 {
                                     // 设置视频窗口大小
                                     width: 160,
                                     height: 90,
-                                    cut: true, // 是否裁剪
+                                    cut: false, // 是否裁剪
                                 },
                                 'screen'
                             );
@@ -479,8 +502,8 @@
                 }
             },
             screenWindow(uid) {
-                return uid + 'screen'
-            }
+                return uid + 'screen';
+            },
         },
     };
 </script>
@@ -499,19 +522,28 @@
     justify-content: center;
     .main-window {
       height: 100%;
-      width: 67vh;
-      // width: 37vw;
-      // width: 427px;
-      // margin: 0 auto;
-      background: #25252d;
+      width: 100vw;
+      //background: #25252d;
     }
-
+    .scale {
+      background: #25252d;
+      border: 1px solid #ffffff;
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 165px;
+      height: 95px;
+      z-index: 9;
+    }
     .sub-window-wrapper {
       position: absolute;
       top: 16px;
       right: 16px;
       z-index: 9;
       width: 165px;
+    }
+    .addTop {
+      top: 132px;
     }
 
     .sub-window {
