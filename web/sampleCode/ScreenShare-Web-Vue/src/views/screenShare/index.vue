@@ -57,7 +57,7 @@
                 remoteStreams: [],
                 max: 4,
                 isOpenVideo: false,
-                maxBitrate: 4000, // 设置最大码率为4M（单位：kbps）
+                maxBitrate: 5000, // 设置最大码率为5M（单位：kbps）
                 contentHint: 'detail', //屏幕贡献的编码测试，detail表示清晰度优先、motion表示流畅度优先
                 screenId: null
             };
@@ -151,6 +151,7 @@
                     this.screenId = remoteStream.getId()
                     this.scale = true;
                     div = this.$refs.largeScreen;
+
                     this.localStream.setLocalRenderMode(
                         {
                             // 设置视频窗口大小
@@ -160,6 +161,8 @@
                         },
                         'video'
                     );
+                } else if (evt.mediaType === 'screen'){
+                    return;
                 }
                 //这里可以控制是否播放某一类媒体，这里设置的是用户主观意愿
                 //比如这里都是设置为true，本次通知的mediaType为audio，则本次调用的play会播放音频，如果video、screen内部已经订阅成功，则也会同时播放video、screen，反之不播放
@@ -172,6 +175,7 @@
                     .play(div, playOptions)
                     .then(() => {
                         console.log('播放对端的流成功: ', playOptions);
+
                         remoteStream.setRemoteRenderMode(
                             {
                                 // 设置视频窗口大小
@@ -383,7 +387,7 @@
                 this.localStream.setAudioProfile('speech_low_quality');
                 //前设置屏幕共享帧率为20帧
                 this.localStream.setScreenProfile({
-                    frameRate: NERTC.VIDEO_FRAME_RATE.CHAT_VIDEO_FRAME_RATE_20,
+                    frameRate: NERTC.VIDEO_FRAME_RATE.CHAT_VIDEO_FRAME_RATE_25,
                 });
                 // 设置码率
                 this.localStream.setVideoEncoderConfiguration({
@@ -510,40 +514,38 @@
 
 <style scoped lang="less">
 .wrapper {
+  width: 100vw;
   height: 100vh;
   background-image: linear-gradient(179deg, #141417 0%, #181824 100%);
   display: flex;
   flex-direction: column;
-
   .content {
     flex: 1;
     display: flex;
     position: relative;
-    justify-content: center;
+
     .main-window {
-      height: 100%;
-      width: 100vw;
-      //background: #25252d;
+      width: calc(100vw - 181px);
+      height: calc(100vh - 54px);
     }
     .scale {
       background: #25252d;
       border: 1px solid #ffffff;
       position: absolute;
       top: 16px;
-      right: 16px;
+      right: 8px;
       width: 165px;
       height: 95px;
       z-index: 9;
     }
     .sub-window-wrapper {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      z-index: 9;
+      margin-top: 16px;
+      margin-right: 8px;
+      margin-left: 8px;
       width: 165px;
     }
     .addTop {
-      top: 132px;
+      margin-top: 132px;
     }
 
     .sub-window {
@@ -572,6 +574,7 @@
     justify-content: center;
     align-items: center;
     color: #fff;
+    z-index: 9;
 
     li {
       height: 54px;
