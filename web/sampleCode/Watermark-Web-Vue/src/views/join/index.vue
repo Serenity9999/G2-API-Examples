@@ -34,6 +34,20 @@
         <el-radio v-model="role" label="host">主播</el-radio>
         <el-radio v-model="role" label="audience">观众</el-radio>
       </div>
+      <!-- <div class="custom-encryption" v-if="isShowScreenShareOption">
+        <span class="mr10">NERTC</span
+        ><el-input v-model="maxBitrate" placeholder="请输入最大码率"></el-input
+        ><br />
+        <span class="mr10">策略选择</span>
+        <el-select v-model="contentHint" placeholder="请选择内容类型">
+          <el-option
+            v-for="item in screenShareOptions"
+            :key="item.value"
+            :value="item.value"
+            :label="item.label"
+          />
+        </el-select>
+      </div> -->
       <div class="custom-encryption" v-if="isShowCustomEncryptionOption">
         <span class="mr10">自定义密钥</span
         ><el-input v-model="customSecret" placeholder="请输入密钥"></el-input
@@ -82,6 +96,7 @@
 
 <script>
     import { message } from '../../components/message';
+    import { checkBrowser } from '../../common';
     import NERTC from 'nertc-web-sdk'
     export default {
         name: 'join',
@@ -165,7 +180,7 @@
                         value: NERTC.CHAT_VIDEO_FRAME_RATE_25,
                         label: 25,
                     },
-                ],      
+                ],
             };
         },
         mounted() {
@@ -278,7 +293,7 @@
                 } else if (isShowScreenShareOption) {
                     this.$router.push({
                         path: `/${path}`,
-                        query: { channelName},
+                        query: { channelName },
                     });
                 } else {
                     this.$router.push({
@@ -352,7 +367,7 @@
         color: #b0b6be;
       }
     }
-     .extra-input{
+    .extra-input{
       margin-top: -20px;
     }
 
