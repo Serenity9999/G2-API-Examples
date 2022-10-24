@@ -234,11 +234,11 @@
                     console.error(e);
                 });
         },
-        destroyed() {
+        async destroyed() {
             try {
-                // this.vConsole.destroy();
-                this.localStream.destroy();
-                NERTC.destroy();
+                await this.client.leave()
+                this.localStream.destroy()
+                this.client.destroy()
             } catch (e) {
                 // 为了兼容低版本，用try catch包裹一下
             }
@@ -389,7 +389,7 @@
                             // 设置视频窗口大小
                             width: div.clientWidth,
                             height: div.clientHeight,
-                            cut: false, // 是否裁剪
+                            cut: true, // 是否裁剪
                         });
                         // 发布
                         this.publish();
@@ -517,7 +517,6 @@
             },
             handleOver() {
                 console.warn('离开房间');
-                this.client.leave();
                 this.returnJoin(1);
             },
         },
@@ -578,6 +577,9 @@
         background: #25252d;
         border: 1px solid #ffffff;
         margin-bottom: 20px;
+        width: 165px;
+        height: 92px;
+        text-align: center;
         .loading-text {
           display: block;
           width: 100%;

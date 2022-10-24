@@ -8,6 +8,7 @@
         placeholder="请输入房间号"
       />
       <input
+        class="extra-input"
         v-if="isShowExtraInput"
         type="text"
         v-model.trim="extraChannelName"
@@ -58,7 +59,7 @@
           />
         </el-select>
         <br />
-        <span class="mr10">视屏帧率</span>
+        <span class="mr10">视频帧率</span>
         <el-select v-model="videoFrameRate">
           <el-option
             v-for="item in videoFrameRateOptions"
@@ -103,8 +104,6 @@
                 dualStream: true,
                 beauty: true,
                 customSecret: '',
-                maxBitrate: null,
-                contentHint: 'detail',
                 customEncryptionOptions: [
                     {
                         value: 'rc4',
@@ -125,48 +124,48 @@
                         label: '流畅度优先',
                     },
                 ],
-                videoQuality: 'NERTC.VIDEO_QUALITY_720p',
+                videoQuality: NERTC.VIDEO_QUALITY_720p,
                 videoQualityOptions: [
                     {
-                        value: 'NERTC.VIDEO_QUALITY_180p',
+                        value: NERTC.VIDEO_QUALITY_180p,
                         label: '320x180',
                     },
                     {
-                        value: 'NERTC.VIDEO_QUALITY_480p',
+                        value: NERTC.VIDEO_QUALITY_480p,
                         label: '640x480',
                     },
                     {
-                        value: 'NERTC.VIDEO_QUALITY_720p',
+                        value: NERTC.VIDEO_QUALITY_720p,
                         label: '1280x720',
                     },
                     {
-                        value: 'NERTC.VIDEO_QUALITY_1080p',
+                        value: NERTC.VIDEO_QUALITY_1080p,
                         label: '1920x1080',
                     },
                 ],
-                videoFrameRate: '15',
+                videoFrameRate: 15,
                 videoFrameRateOptions: [
                     {
-                        value: 'NERTC.CHAT_VIDEO_FRAME_RATE_5',
-                        label: '5',
+                        value: NERTC.CHAT_VIDEO_FRAME_RATE_5,
+                        label: 5,
                     },
                     {
-                        value: 'NERTC.CHAT_VIDEO_FRAME_RATE_10',
-                        label: '10',
+                        value: NERTC.CHAT_VIDEO_FRAME_RATE_10,
+                        label: 10,
                     },
                     {
-                        value: 'NERTC.CHAT_VIDEO_FRAME_RATE_15',
-                        label: '15',
+                        value: NERTC.CHAT_VIDEO_FRAME_RATE_15,
+                        label: 15,
                     },
                     {
-                        value: 'NERTC.CHAT_VIDEO_FRAME_RATE_20',
-                        label: '20',
+                        value: NERTC.CHAT_VIDEO_FRAME_RATE_20,
+                        label: 20,
                     },
                     {
-                        value: 'NERTC.CHAT_VIDEO_FRAME_RATE_25',
-                        label: '25',
+                        value: NERTC.CHAT_VIDEO_FRAME_RATE_25,
+                        label: 25,
                     },
-                ],
+                ],      
             };
         },
         mounted() {
@@ -213,8 +212,6 @@
                     videoQuality,
                     videoFrameRate,
                     isShowScreenShareOption,
-                    maxBitrate,
-                    contentHint,
                 } = this;
 
                 if (!channelName) {
@@ -281,7 +278,7 @@
                 } else if (isShowScreenShareOption) {
                     this.$router.push({
                         path: `/${path}`,
-                        query: { channelName, maxBitrate, contentHint },
+                        query: { channelName},
                     });
                 } else {
                     this.$router.push({
@@ -354,6 +351,9 @@
       &::placeholder {
         color: #b0b6be;
       }
+    }
+     .extra-input{
+      margin-top: -20px;
     }
 
     .submit-btn {

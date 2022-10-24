@@ -474,7 +474,6 @@
             },
             handleOver() {
                 console.warn('离开房间');
-                this.client.leave();
                 this.returnJoin(1);
             },
         },
@@ -513,6 +512,9 @@
     .sub-window {
       background: #25252d;
       border: 1px solid #ffffff;
+      width: 165px;
+      height: 92px;
+      text-align: center;
       .loading-text {
         display: block;
         width: 100%;

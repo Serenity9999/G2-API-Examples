@@ -33,7 +33,7 @@
     >
         <div class="pl20 pr20 mb20 flex jcb">
             <span class="mr10">背景音乐</span>
-            <el-radio-group @change="changeMusic" v-model="primaryRadio">
+            <el-radio-group  v-model="primaryRadio">
                 <el-radio-button label="1">音乐1</el-radio-button>
                 <el-radio-button label="2">音乐2</el-radio-button>
             </el-radio-group>
@@ -45,9 +45,10 @@
             </div>
         </div>
         <div class="t-center">
-            <el-button type="success" round @click="resumeAudio">播放</el-button>
-            <el-button type="warning" round @click="pauseAudio">暂停</el-button>
-            <el-button type="danger" round @click="stopAudio">停止</el-button>
+            <el-button type="success" :disabled="!primaryRadio" round @click="startAudio">播放</el-button>
+            <el-button type="warning" :disabled="!primaryRadio" round @click="pauseAudio">暂停</el-button>
+            <el-button type="success" :disabled="!primaryRadio" round @click="resumeAudio">恢复</el-button>
+            <el-button type="danger" :disabled="!primaryRadio" round @click="stopAudio">停止</el-button>
         </div>
     </el-drawer>
   </div>
@@ -225,10 +226,11 @@
                 console.error(e)
             })
         },
-        destroyed() {
+        async destroyed() {
             try {
+                await this.client.leave()
                 this.localStream.destroy()
-                NERTC.destroy()
+                this.client.destroy()
             } catch (e) {
                 // 为了兼容低版本，用try catch包裹一下
             }
@@ -346,10 +348,22 @@
             },
             handleOver() {
                 console.warn('离开房间');
-                this.client.leave();
                 this.returnJoin(1);
             },
-            changeMusic() {
+            changeVolume() {
+                if (!this.localStream) {
+                    throw Error('内部错误，请重新加入房间')
+                }
+                if (!this.primaryRadio){
+                    return
+                }
+                this.localStream.adjustAudioMixingVolume(this.primaryVolume).then(() => {
+                    console.warn('设置伴音的音量成功');
+                }).catch(err => {
+                    console.error('设置伴音的音量失败: ', err);
+                })
+            },
+            startAudio(){
                 if (!this.localStream) {
                     throw Error('内部错误，请重新加入房间')
                 }
@@ -372,20 +386,11 @@
                     console.error('开始伴音失败: ', err);
                 })
             },
-            changeVolume() {
-                if (!this.localStream) {
-                    throw Error('内部错误，请重新加入房间')
-                }
-                this.localStream.adjustAudioMixingVolume(this.primaryVolume).then(() => {
-                    console.warn('设置伴音的音量成功');
-                }).catch(err => {
-                    console.error('设置伴音的音量失败: ', err);
-                })
-            },
             resumeAudio() {
                 if (!this.localStream) {
                     throw Error('内部错误，请重新加入房间')
                 }
+
                 this.localStream.resumeAudioMixing().then(res => {
                     console.warn('播放伴音成功')
                 }).catch(err => {
@@ -452,7 +457,9 @@
       background: #25252d;
       border: 1px solid #ffffff;
       margin-bottom: 20px;
-
+      width: 165px;
+      height: 92px;
+      text-align: center;
       .loading-text {
         display: block;
         width: 100%;

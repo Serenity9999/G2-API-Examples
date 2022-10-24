@@ -332,7 +332,7 @@
     import { message } from '../../components/message';
     // import * as NERTC from '../../sdk/NIM_Web_NERTC_v4.6.20.js';
     import NERTC from 'nertc-web-sdk';
-    import AdvancedBeauty from 'nertc-web-sdk/NERTC_Web_SDK_AdvancedBeauty'
+    import AdvancedBeauty from 'nertc-web-sdk/NERTC_Web_SDK_AdvancedBeauty';
     import wasmFeatureDetect from '../../lib/wasmFeatureDetect.js';
     import config from '../../../config';
     import { getToken } from '../../common';
@@ -490,7 +490,7 @@
                 //收到房间中其他成员发布自己的媒体的通知，对端同一个人同时开启了麦克风、摄像头、屏幕贡献，这里会通知多次
                 const stream = evt.stream;
                 const userId = stream.getId();
-                console.warn(`收到 ${userId} 的发布 ${evt.mediaType} 的通知`) // mediaType为：'audio' | 'video' | 'screen'
+                console.warn(`收到 ${userId} 的发布 ${evt.mediaType} 的通知`); // mediaType为：'audio' | 'video' | 'screen'
                 if (this.remoteStreams.some((item) => item.getId() === userId)) {
                     console.warn('收到已订阅的远端发布，需要更新', stream);
                     this.remoteStreams = this.remoteStreams.map((item) =>
@@ -511,7 +511,7 @@
             this.client.on('stream-removed', (evt) => {
                 const stream = evt.stream;
                 const userId = stream.getId();
-                console.warn(`收到 ${userId} 的停止发布 ${evt.mediaType} 的通知`) // mediaType为：'audio' | 'video' | 'screen'
+                console.warn(`收到 ${userId} 的停止发布 ${evt.mediaType} 的通知`); // mediaType为：'audio' | 'video' | 'screen'
                 stream.stop(evt.mediaType);
                 this.remoteStreams = this.remoteStreams.map((item) =>
                     item.getId() === userId ? stream : item
@@ -522,7 +522,7 @@
             //执行完subscribe()方法后，如果订阅成功，这里会通知用户，此次订阅成功了
             this.client.on('stream-subscribed', (evt) => {
                 const userId = evt.stream.getId();
-                console.warn(`收到订阅 ${userId} 的 ${evt.mediaType} 成功的通知`) // mediaType为：'audio' | 'video' | 'screen'
+                console.warn(`收到订阅 ${userId} 的 ${evt.mediaType} 成功的通知`); // mediaType为：'audio' | 'video' | 'screen'
                 const remoteStream = evt.stream;
                 //用于播放对方视频画面的div节点
                 const div = [...this.$refs.small].find(
@@ -533,8 +533,8 @@
                 const playOptions = {
                     audio: true,
                     video: true,
-                    screen: true
-                }
+                    screen: true,
+                };
                 remoteStream
                     .play(div, playOptions)
                     .then(() => {
@@ -557,7 +557,7 @@
                     console.log('remoteStream notAllowedError: ', id);
                     if (errorCode === 41030) {
                         //页面弹筐加一个按钮，通过交互完成浏览器自动播放策略限制的接触
-                        const userGestureUI = document.createElement('div')
+                        const userGestureUI = document.createElement('div');
                         if (userGestureUI && userGestureUI.style) {
                             userGestureUI.style.fontSize = '20px';
                             userGestureUI.style.position = 'fixed';
@@ -571,10 +571,11 @@
                                     userGestureUI.parentNode.removeChild(userGestureUI);
                                 }
                                 remoteStream.resume();
-                            }
+                            };
                             userGestureUI.style.display = 'block';
-                            userGestureUI.innerHTML = '自动播放受到浏览器限制，需手势触发。<br/>点击此处手动播放'
-                            document.body.appendChild(userGestureUI)
+                            userGestureUI.innerHTML =
+                                '自动播放受到浏览器限制，需手势触发。<br/>点击此处手动播放';
+                            document.body.appendChild(userGestureUI);
                         }
                     }
                 });
@@ -610,10 +611,11 @@
                     console.error(e);
                 });
         },
-        destroyed() {
+        async destroyed() {
             try {
-                this.localStream.destroy();
-                NERTC.destroy();
+                await this.client.leave()
+                this.localStream.destroy()
+                this.client.destroy()
             } catch (e) {
                 // 为了兼容低版本，用try catch包裹一下
             }
@@ -718,7 +720,7 @@
                             // 设置视频窗口大小
                             width: div.clientWidth,
                             height: div.clientHeight,
-                            cut: true, // 是否裁剪
+                            cut: false, // 是否裁剪
                         });
                         // 发布
                         this.publish();
@@ -752,7 +754,7 @@
                 remoteStream.setSubscribeConfig({
                     audio: true,
                     video: true,
-                    screen: true
+                    screen: true,
                 });
                 this.client
                     .subscribe(remoteStream)
@@ -833,7 +835,7 @@
                                 // 设置视频窗口大小
                                 width: div.clientWidth,
                                 height: div.clientHeight,
-                                cut: true, // 是否裁剪
+                                cut: false, // 是否裁剪
                             });
                         })
                         .catch((err) => {
@@ -850,7 +852,6 @@
                 if (this.openAdvBeauty) {
                     this.localStream.disableAdvancedBeauty();
                 }
-                this.client.leave();
                 this.returnJoin(1);
             },
             setFilterName() {
@@ -951,7 +952,9 @@
       background: #25252d;
       border: 1px solid #ffffff;
       margin-bottom: 20px;
-
+      width: 165px;
+      height: 92px;
+      text-align: center;
       .loading-text {
         display: block;
         width: 100%;

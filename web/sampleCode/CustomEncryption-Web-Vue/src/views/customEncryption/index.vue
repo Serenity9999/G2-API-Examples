@@ -588,7 +588,7 @@
                                 // 设置视频窗口大小
                                 width: div.clientWidth,
                                 height: div.clientHeight,
-                                cut: true, // 是否裁剪
+                                cut: false, // 是否裁剪
                             });
                         })
                         .catch((err) => {
@@ -599,7 +599,6 @@
             },
             handleOver() {
                 console.warn('离开房间');
-                this.client.leave();
                 this.returnJoin(1);
             },
         },
@@ -639,7 +638,9 @@
       background: #25252d;
       border: 1px solid #ffffff;
       margin-bottom: 20px;
-
+      width: 165px;
+      height: 92px;
+      text-align: center;
       .loading-text {
         display: block;
         width: 100%;

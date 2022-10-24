@@ -3,11 +3,28 @@
     <div class="content">
       <!--画面div-->
       <div class="main-window" ref="large"></div>
-      <div class="sub-window-wrapper">
+      <div class="left-window-wrapper">
+        <div class="channelName">房间：{{channelName}}</div>
         <!--小画面div-->
         <template v-if="remoteStreams.length">
           <div
             v-for="item in remoteStreams"
+            :key="item.getId()"
+            class="sub-window"
+            ref="small"
+            :data-uid="item.getId()"
+          ></div>
+        </template>
+        <div v-else class="sub-window" ref="small">
+          <span class="loading-text">等待对方加入…</span>
+        </div>
+      </div>
+      <div class="right-window-wrapper">
+        <div class="channelName">房间：{{extraChannelName}}</div>
+        <!--小画面div-->
+        <template v-if="extraRemoteStreams.length">
+          <div
+            v-for="item in extraRemoteStreams"
             :key="item.getId()"
             class="sub-window"
             ref="small"
@@ -43,18 +60,24 @@
                 isSilence: false,
                 isStop: false,
                 client: null,
+                extraClient: null,
                 localUid: Math.ceil(Math.random() * 1e5),
                 extraUid: Math.ceil(Math.random() * 1e5),
                 localStream: null,
                 extraStream: null,
                 remoteStreams: [],
+                extraRemoteStreams: [],
                 max: 20,
+                channelName: null,
+                extraChannelName: null
             };
         },
         mounted() {
             // 初始化音视频实例
             console.warn('初始化音视频sdk');
             window.self = this;
+            this.channelName = this.$route.query.channelName;
+            this.extraChannelName = this.$route.query.extraChannelName;
             this.client = NERTC.createClient({
                 appkey: config.appkey,
                 debug: true,
@@ -65,12 +88,21 @@
             });
             //监听事件
             this.client.on('peer-online', (evt) => {
-                console.warn(`${evt.uid} 加入房间`);
+                console.warn(`${evt.uid} 加入${this.channelName}房间`);
+            });
+            this.extraClient.on('peer-online', (evt) => {
+                console.warn(`${evt.uid} 加入${this.extraChannelName}房间`);
             });
 
             this.client.on('peer-leave', (evt) => {
-                console.warn(`${evt.uid} 离开房间`);
+                console.warn(`${evt.uid} 离开${this.channelName}房间`);
                 this.remoteStreams = this.remoteStreams.filter(
+                    (item) => !!item.getId() && item.getId() !== evt.uid
+                );
+            });
+            this.extraClient.on('peer-leave', (evt) => {
+                console.warn(`${evt.uid} 离开${this.extraChannelName}房间`);
+                this.extraRemoteStreams = this.extraRemoteStreams.filter(
                     (item) => !!item.getId() && item.getId() !== evt.uid
                 );
             });
@@ -86,12 +118,34 @@
                         item.getId() === userId ? stream : item
                     );
                     //订阅其发布的媒体，可以渲染播放
-                    await this.subscribe(stream);
+                    await this.subscribe('client', stream);
                 } else if (this.remoteStreams.length < this.max - 1) {
                     console.warn('收到新的远端发布消息', stream);
                     this.remoteStreams = this.remoteStreams.concat(stream);
                     //订阅其发布的媒体，可以渲染播放
-                    await this.subscribe(stream);
+                    await this.subscribe('client', stream);
+                } else {
+                    console.warn('房间人数已满');
+                }
+            });
+
+            this.extraClient.on('stream-added', async (evt) => {
+                //收到房间中其他成员发布自己的媒体的通知，对端同一个人同时开启了麦克风、摄像头、屏幕贡献，这里会通知多次
+                const stream = evt.stream;
+                const userId = stream.getId();
+                console.warn(`收到 ${userId} 的发布 ${evt.mediaType} 的通知`) // mediaType为：'audio' | 'video' | 'screen'
+                if (this.extraRemoteStreams.some((item) => item.getId() === userId)) {
+                    console.warn('收到已订阅的远端发布，需要更新', stream);
+                    this.extraRemoteStreams = this.extraRemoteStreams.map((item) =>
+                        item.getId() === userId ? stream : item
+                    );
+                    //订阅其发布的媒体，可以渲染播放
+                    await this.subscribe('extraClient', stream);
+                } else if (this.extraRemoteStreams.length < this.max - 1) {
+                    console.warn('收到新的远端发布消息', stream);
+                    this.extraRemoteStreams = this.extraRemoteStreams.concat(stream);
+                    //订阅其发布的媒体，可以渲染播放
+                    await this.subscribe('extraClient', stream);
                 } else {
                     console.warn('房间人数已满');
                 }
@@ -103,6 +157,17 @@
                 console.warn(`收到 ${userId} 的停止发布 ${evt.mediaType} 的通知`) // mediaType为：'audio' | 'video' | 'screen'
                 stream.stop(evt.mediaType);
                 this.remoteStreams = this.remoteStreams.map((item) =>
+                    item.getId() === userId ? stream : item
+                );
+                console.warn('远端流停止订阅，需要更新', userId, stream);
+            });
+
+            this.extraClient.on('stream-removed', (evt) => {
+                const stream = evt.stream;
+                const userId = stream.getId();
+                console.warn(`收到 ${userId} 的停止发布 ${evt.mediaType} 的通知`) // mediaType为：'audio' | 'video' | 'screen'
+                stream.stop(evt.mediaType);
+                this.extraRemoteStreams = this.extraRemoteStreams.map((item) =>
                     item.getId() === userId ? stream : item
                 );
                 console.warn('远端流停止订阅，需要更新', userId, stream);
@@ -165,22 +230,95 @@
                 });
             });
 
+            this.extraClient.on('stream-subscribed', (evt) => {
+                const userId = evt.stream.getId();
+                console.warn(`收到订阅 ${userId} 的 ${evt.mediaType} 成功的通知`) // mediaType为：'audio' | 'video' | 'screen'
+                //这里可以根据mediaType的类型决定播放策略
+                const remoteStream = evt.stream;
+                //用于播放对方视频画面的div节点
+                const div = [...this.$refs.small].find((item) => {
+                    return Number(item.dataset.uid) === Number(remoteStream.getId());
+                });
+                //这里可以控制是否播放某一类媒体，这里设置的是用户主观意愿
+                //比如这里都是设置为true，本次通知的mediaType为audio，则本次调用的play会播放音频，如果video、screen内部已经订阅成功，则也会同时播放video、screen，反之不播放
+                const playOptions = {
+                    audio: true,
+                    video: true,
+                    screen: true
+                }
+                remoteStream.play(div, playOptions).then(() => {
+                    console.log('播放对端的流成功: ', playOptions);
+                    remoteStream.setRemoteRenderMode({
+                        // 设置视频窗口大小
+                        width: 160,
+                        height: 90,
+                        cut: false, // 是否裁剪
+                    });
+                }).catch((err) => {
+                    console.warn('播放对方视频失败了: ', err);
+                });
+                //这里监听一下音频自动播放会被浏览器限制的问题（https://doc.yunxin.163.com/nertc/docs/jM3NDE0NTI?platform=web）
+                remoteStream.on('notAllowedError', (err) => {
+                    const errorCode = err.getCode();
+                    const id = remoteStream.getId();
+                    console.log('remoteStream notAllowedError: ', id);
+                    if (errorCode === 41030) {
+                        //页面弹筐加一个按钮，通过交互完成浏览器自动播放策略限制的接触
+                        const userGestureUI = document.createElement('div')
+                        if (userGestureUI && userGestureUI.style) {
+                            userGestureUI.style.fontSize = '20px';
+                            userGestureUI.style.position = 'fixed';
+                            userGestureUI.style.background = 'yellow';
+                            userGestureUI.style.margin = 'auto';
+                            userGestureUI.style.width = '100%';
+                            userGestureUI.style.zIndex = '9999';
+                            userGestureUI.style.top = '0';
+                            userGestureUI.onclick = () => {
+                                if (userGestureUI && userGestureUI.parentNode) {
+                                    userGestureUI.parentNode.removeChild(userGestureUI);
+                                }
+                                remoteStream.resume();
+                            }
+                            userGestureUI.style.display = 'block';
+                            userGestureUI.innerHTML = '自动播放受到浏览器限制，需手势触发。<br/>点击此处手动播放'
+                            document.body.appendChild(userGestureUI)
+                        }
+                    }
+                });
+            });
+
+
             this.client.on('uid-duplicate', () => {
                 console.warn('==== uid重复，你被踢出');
             });
-
+            this.extraClient.on('uid-duplicate', () => {
+                console.warn('==== uid重复，你被踢出');
+            });
             this.client.on('error', (type) => {
                 console.error('===== 发生错误事件：', type);
                 if (type === 'SOCKET_ERROR') {
                     console.warn('==== 网络异常，已经退出房间');
                 }
             });
-
+            this.extraClient.on('error', (type) => {
+                console.error('===== 发生错误事件：', type);
+                if (type === 'SOCKET_ERROR') {
+                    console.warn('==== 网络异常，已经退出房间');
+                }
+            });
             this.client.on('accessDenied', (type) => {
+                console.warn(`==== ${type}设备开启的权限被禁止`);
+            });
+            this.extraClient.on('accessDenied', (type) => {
                 console.warn(`==== ${type}设备开启的权限被禁止`);
             });
 
             this.client.on('connection-state-change', (evt) => {
+                console.warn(
+                    `网络状态变更: ${evt.prevState} => ${evt.curState}, 当前是否在重连：${evt.reconnect}`
+                );
+            });
+            this.extraClient.on('connection-state-change', (evt) => {
                 console.warn(
                     `网络状态变更: ${evt.prevState} => ${evt.curState}, 当前是否在重连：${evt.reconnect}`
                 );
@@ -203,11 +341,14 @@
                     console.error(e);
                 });
         },
-        destroyed() {
+        async destroyed() {
             try {
-                this.localStream.destroy();
-                this.remoteStreams.destroy();
-                NERTC.destroy();
+                await this.client.leave()
+                await this.extraClient.leave()
+                this.localStream.destroy()
+                this.extraStream.destroy()
+                this.client.destroy()
+                this.extraClient.destroy()
             } catch (e) {
                 // 为了兼容低版本，用try catch包裹一下
             }
@@ -325,7 +466,7 @@
                         }
                     });
             },
-            subscribe(remoteStream) {
+            subscribe(client, remoteStream) {
                 //这里可以控制是否订阅某一类媒体，这里设置的是用户主观意愿
                 //比如这里都是设置为true，如果stream-added事件中通知了是audio发布了，则本次调用会订阅音频，如果video、screen之前已经有stream-added通知，则也会同时订阅video、screen，反之会忽略
                 remoteStream.setSubscribeConfig({
@@ -333,7 +474,7 @@
                     video: true,
                     screen: true
                 });
-                this.client
+                this[client]
                     .subscribe(remoteStream)
                     .then(() => {
                         console.warn('本地 subscribe 成功');
@@ -359,6 +500,17 @@
                             console.warn('关闭 mic 失败: ', err);
                             message('关闭 mic 失败');
                         });
+                    this.extraStream
+                        .close({
+                            type: 'audio',
+                        })
+                        .then(() => {
+                            console.warn('extraStream 关闭 mic sucess');
+                        })
+                        .catch((err) => {
+                            console.warn('extraStream 关闭 mic 失败: ', err);
+                            message('extraStream 关闭 mic 失败');
+                        });
                 } else {
                     console.warn('打开mic');
                     if (!this.localStream) {
@@ -375,6 +527,17 @@
                         .catch((err) => {
                             console.warn('打开mic失败: ', err);
                             message('打开mic失败');
+                        });
+                    this.extraStream
+                        .open({
+                            type: 'audio',
+                        })
+                        .then(() => {
+                            console.warn('extraStream 打开mic sucess');
+                        })
+                        .catch((err) => {
+                            console.warn('extraStream 打开mic失败: ', err);
+                            message('extraStream 打开mic失败');
                         });
                 }
             },
@@ -394,6 +557,17 @@
                             console.warn('关闭摄像头失败: ', err);
                             message('关闭摄像头失败');
                         });
+                    this.extraStream
+                        .close({
+                            type: 'video',
+                        })
+                        .then(() => {
+                            console.warn('extraStream 关闭摄像头 sucess');
+                        })
+                        .catch((err) => {
+                            console.warn('extraStream 关闭摄像头失败: ', err);
+                            message('extraStream 关闭摄像头失败');
+                        });
                 } else {
                     console.warn('打开摄像头');
                     if (!this.localStream) {
@@ -412,19 +586,28 @@
                                 // 设置视频窗口大小
                                 width: div.clientWidth,
                                 height: div.clientHeight,
-                                cut: true, // 是否裁剪
+                                cut: false, // 是否裁剪
                             });
                         })
                         .catch((err) => {
                             console.warn('打开摄像头失败: ', err);
                             message('打开摄像头失败');
                         });
+                    this.extraStream
+                        .open({
+                            type: 'video',
+                        })
+                        .then(() => {
+                            console.warn('extraStream 打开摄像头 sucess');
+                        })
+                        .catch((err) => {
+                            console.warn('extraStream 打开摄像头失败: ', err);
+                            message('extraStream 打开摄像头失败');
+                        });
                 }
             },
             handleOver() {
                 console.warn('离开房间');
-                this.client.leave();
-                this.extraClient.leave();
                 this.returnJoin(1);
             },
         },
@@ -452,19 +635,33 @@
       background: #25252d;
     }
 
-    .sub-window-wrapper {
+    .right-window-wrapper {
       position: absolute;
       top: 16px;
       right: 16px;
       z-index: 9;
       width: 165px;
     }
-
+    .left-window-wrapper {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 9;
+      width: 165px;
+    }
+    .channelName{
+        text-align: center;
+        font-size: 24px;
+        margin-bottom: 10px;
+        color: red;
+    }
     .sub-window {
       background: #25252d;
       border: 1px solid #ffffff;
       margin-bottom: 20px;
-
+      width: 165px;
+      height: 92px;
+      text-align: center;
       .loading-text {
         display: block;
         width: 100%;

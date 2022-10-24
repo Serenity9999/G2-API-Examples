@@ -170,10 +170,11 @@
                 console.error(e)
             })
         },
-        destroyed() {
+        async destroyed() {
             try {
+                await this.client.leave()
                 this.localStream.destroy()
-                NERTC.destroy()
+                this.client.destroy()
             } catch (e) {
                 // 为了兼容低版本，用try catch包裹一下
             }
@@ -333,7 +334,7 @@
                         this.localStream.setLocalRenderMode({ // 设置视频窗口大小
                             width: div.clientWidth,
                             height: div.clientHeight,
-                            cut: true // 是否裁剪
+                            cut: false // 是否裁剪
                         })
                     }).catch(err => {
                         console.warn('打开摄像头失败: ', err)
@@ -343,7 +344,6 @@
             },
             handleOver () {
                 console.warn('离开房间')
-                this.client.leave()
                 this.returnJoin(1)
             }
         }
