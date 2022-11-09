@@ -19,6 +19,24 @@
             >
           </el-col>
         </el-row>
+        <el-row>
+          <el-col :span="8" :offset="8">
+            <el-button
+              type="success"
+              :disabled="!registerDenoise"
+              @click="closeAIDenoise"
+              >关闭</el-button
+            >
+          </el-col>
+          <el-col :span="8">
+            <el-button
+              type="success"
+              :disabled="!registerDenoise"
+              @click="unregisterDenoise"
+              >销毁</el-button
+            >
+          </el-col>
+        </el-row>
       </el-card>
       <div class="main-window" ref="large"></div>
       <div class="sub-window-wrapper">
@@ -253,6 +271,16 @@
             openAIDenoise() {
                 this.localStream.enableAIDenoise();
                 this.openDenoise = true;
+            },
+            closeAIDenoise() {
+                if (this.openDenoise) {
+                    this.localStream.disableAIDenoise();
+                    this.openDenoise = false;
+                }
+            },
+            unregisterDenoise() {
+                this.localStream.unregisterPlugin('AIDenoise');
+                this.registerDenoise = false;
             },
             getToken() {
                 return getToken({
