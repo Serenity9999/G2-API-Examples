@@ -254,7 +254,7 @@
                     message('请选择加密类型');
                     return;
                 }
-                const { path = 'single' } = this.$route.query;
+                const { path = 'screenShot' } = this.$route.query;
                 if (isShowCustomEncryptionOption) {
                     this.$router.push({
                         path: `/${path}`,

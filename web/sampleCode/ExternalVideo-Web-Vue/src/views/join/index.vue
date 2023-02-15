@@ -40,7 +40,7 @@
                     message('房间号为12位以内的数字');
                     return
                 }
-                const { path = 'single' } = this.$route.query
+                const { path = 'customCollect' } = this.$route.query
                 this.$router.push({
                     path: `/${path}`,
                     query: { channelName }
