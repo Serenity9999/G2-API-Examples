@@ -5,6 +5,7 @@ const fs = require('fs-extra')
 module.exports = {
     publicPath: '/',
     devServer: {
+        open: true,
         port: 8020,
         overlay: {
             warnings: false,
