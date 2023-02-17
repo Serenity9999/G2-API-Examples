@@ -18,6 +18,7 @@
     "nertc-web-sdk": "latest",
     "sm4-128-ecb": "^1.4.0",
     "vue": "^2.6.11",
+    "vant": "^2.12.48",
     "vue-router": "^3.2.0"
   },
   "devDependencies": {

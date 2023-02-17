@@ -26,7 +26,7 @@ vue （vue-cli 4.x）
 5. 将AppKey填写进 `/config/index` 中
 
 ## 5.开始运行项目
-- node开发环境 version 8+
+- 建议 node 开发环境 version 16+
 
 
 ## 6.开始运行项目
