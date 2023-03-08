@@ -60,10 +60,14 @@ async function join() {
     }
     uid = $('#uid').val()
      // 监听事件
-    rtc.client.on('stream-added', (event) => {
+    rtc.client.on('stream-added', async(event) => {
         const remoteStream = event.stream
         console.warn('收到别人的发布消息: ', remoteStream.streamID, 'mediaType: ', event.mediaType)
         rtc.remoteStreams[remoteStream.streamID] = remoteStream
+        // 已经有两人在房间中，剔除（不能排除观众）
+        if (Object.keys(rtc.remoteStreams).length === 2) {
+            await this.handleOver()
+        }
         //订阅远端流
         rtc.client.subscribe(remoteStream).then(() => {
             console.warn(`subscribe 成功 ${remoteStream.streamID}`)
@@ -89,7 +93,7 @@ async function join() {
         console.warn('收到别人停止发布的消息: ', remoteStream.streamID, 'mediaType: ', evt.mediaType)
         remoteStream.stop(evt.mediaType)
     })
-
+    
     rtc.client.on('uid-duplicate', () => {
         console.warn('==== uid重复，你被踢出');
     });
@@ -132,6 +136,12 @@ async function join() {
     }
 }
 
+async function handleOver() {
+    await rtc.client.leave()
+    rtc.localStream.destroy()
+    rtc.client.destroy()
+}
+
 async function leave() {
     await rtc.client.leave()
 }
@@ -145,4 +155,37 @@ $('#join').on('click', async() => {
 $('#leave').on('click', async() => {
     console.log('离开')
     leave()
+})
+// mute控制
+$('#muteAudio').on('click', () => {
+    console.log('静音')
+    rtc.localStream.muteAudio()
+    .then(console.log('muteAudio'))
+    .catch((err) => {
+        console.log('muteAudio 错误：', err)
+    })
+})
+$('#unmuteAudio').on('click', () => {
+    console.log('解除静音')
+    rtc.localStream.unmuteAudio()
+    .then(console.log('unmuteAudio'))
+    .catch((err) => {
+        console.log('unmuteAudio 错误：', err)
+    })
+})
+$('#muteVideo').on('click', () => {
+    console.log('停止视频')
+    rtc.localStream.muteVideo()
+    .then(console.log('muteVideo'))
+    .catch((err) => {
+        console.log('muteVideo 错误：', err)
+    })
+})
+$('#unmuteVideo').on('click', () => {
+    console.log('恢复视频')
+    rtc.localStream.unmuteVideo()
+    .then(console.log('unmuteVideo'))
+    .catch((err) => {
+        console.log('unmuteVideo 错误：', err)
+    })
 })
