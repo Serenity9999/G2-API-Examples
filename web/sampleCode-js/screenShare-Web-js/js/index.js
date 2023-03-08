@@ -69,7 +69,6 @@ async function join() {
             console.warn(`subscribe 成功 ${remoteStream.streamID}`)
         })
     })
-
     rtc.client.on('stream-subscribed', async (event) => {
         // 远端流订阅成功
         const remoteStream = event.stream
@@ -83,33 +82,11 @@ async function join() {
         // 播放远端流
         await remoteStream.play('remoteVideoContent')
     })
-
     rtc.client.on('stream-removed', (evt) => {
         let remoteStream = evt.stream
         console.warn('收到别人停止发布的消息: ', remoteStream.streamID, 'mediaType: ', evt.mediaType)
         remoteStream.stop(evt.mediaType)
     })
-
-    rtc.client.on('uid-duplicate', () => {
-        console.warn('==== uid重复，你被踢出');
-    });
-
-    rtc.client.on('error', (type) => {
-        console.error('===== 发生错误事件：', type);
-        if (type === 'SOCKET_ERROR') {
-            console.warn('==== 网络异常，已经退出房间');
-        }
-    });
-
-    rtc.client.on('accessDenied', (type) => {
-        console.warn(`==== ${type}设备开启的权限被禁止`);
-    });
-
-    rtc.client.on('connection-state-change', (evt) => {
-        console.warn(
-            `网络状态变更: ${evt.prevState} => ${evt.curState}, 当前是否在重连：${evt.reconnect}`
-        );
-    });
 
     try {
         await rtc.client.join({
@@ -145,4 +122,29 @@ $('#join').on('click', async() => {
 $('#leave').on('click', async() => {
     console.log('离开')
     leave()
+})
+// 屏幕共享
+$('#startShare').on('click', async() => {
+    console.log('开始共享')
+    rtc.localStream.open({type: 'screen'})
+    .then(async () => {
+        await rtc.localStream.play(document.getElementById('localVideoContent'))
+        rtc.localStream.setLocalRenderMode({
+            width: 320,
+            height: 240
+        })
+    })
+    .catch((err) => {
+        console.log('打开屏幕共享 失败: ', err)
+    })
+})
+$('#stopShare').on('click', async() => {
+    console.log('停止共享')
+    rtc.localStream.close({type: 'screen'})
+    .then(() => {
+        console.log('关闭屏幕共享 sucess')
+    })
+    .catch((err) => {
+        console.log('关闭屏幕共享 失败: ', err)
+    })
 })

@@ -60,10 +60,14 @@ async function join() {
     }
     uid = $('#uid').val()
      // 监听事件
-    rtc.client.on('stream-added', (event) => {
+    rtc.client.on('stream-added', async(event) => {
         const remoteStream = event.stream
         console.warn('收到别人的发布消息: ', remoteStream.streamID, 'mediaType: ', event.mediaType)
         rtc.remoteStreams[remoteStream.streamID] = remoteStream
+        // 已经有两人在房间中，剔除（不能排除观众）
+        if (Object.keys(rtc.remoteStreams).length === 2) {
+            await this.handleOver()
+        }
         //订阅远端流
         rtc.client.subscribe(remoteStream).then(() => {
             console.warn(`subscribe 成功 ${remoteStream.streamID}`)
@@ -130,6 +134,12 @@ async function join() {
     } catch (error) {
         console.error(error)
     }
+}
+
+async function handleOver() {
+    await rtc.client.leave()
+    rtc.localStream.destroy()
+    rtc.client.destroy()
 }
 
 async function leave() {

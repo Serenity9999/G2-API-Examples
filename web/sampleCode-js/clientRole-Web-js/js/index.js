@@ -59,6 +59,8 @@ async function join() {
         window.localStorage.setItem(`${localStoragePrefix}channelName`, channelName)
     }
     uid = $('#uid').val()
+    let role = $('input[name="role"]:checked').val()
+    rtc.client.setClientRole(role)
      // 监听事件
     rtc.client.on('stream-added', (event) => {
         const remoteStream = event.stream

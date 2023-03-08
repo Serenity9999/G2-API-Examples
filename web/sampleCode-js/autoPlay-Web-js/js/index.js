@@ -82,6 +82,36 @@ async function join() {
         })
         // 播放远端流
         await remoteStream.play('remoteVideoContent')
+        // 自动播放受限处理
+        remoteStream.on('notAllowedError', (err) => {
+            console.warn('remoteStream notAllowedError', remoteStream, err)
+            const errorCode = err.getCode()
+            const id = remoteStream.getId()
+            // addView(id)
+            if (errorCode === 41030) {
+                console.log('自动播放策略阻止：' + remoteStream.streamID)
+               //页面弹筐加一个按钮，通过交互完成浏览器自动播放策略限制的接触
+                const userGestureUI = document.createElement('div')
+                if (userGestureUI && userGestureUI.style) {
+                    userGestureUI.style.fontSize = '20px';
+                    userGestureUI.style.position = 'fixed';
+                    userGestureUI.style.background = 'yellow';
+                    userGestureUI.style.margin = 'auto';
+                    userGestureUI.style.width = '100%';
+                    userGestureUI.style.zIndex = '9999';
+                    userGestureUI.style.top = '0';
+                    userGestureUI.onclick = () => {
+                        if (userGestureUI && userGestureUI.parentNode) {
+                            userGestureUI.parentNode.removeChild(userGestureUI);
+                        }
+                        remoteStream.resume();
+                    }
+                    userGestureUI.style.display = 'block';
+                    userGestureUI.innerHTML = '自动播放受到浏览器限制，需手势触发。<br/>点击此处手动播放'
+                    document.body.appendChild(userGestureUI)
+                }
+            }
+        })
     })
 
     rtc.client.on('stream-removed', (evt) => {
